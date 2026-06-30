@@ -74,24 +74,14 @@ sentence_transformers/
 *.bak
 
 # ==========================
-# Generated Outputs
+# Old pipeline outputs (no longer used)
 # ==========================
-submission.csv
-predictions.csv
-results/
-outputs/
+data/output/
+data/processed/candidate_text.parquet
+data/processed/top2000_candidates.parquet
 
 # ==========================
-# Large Raw Data (Optional)
-# Remove these if the hackathon
-# requires uploading them.
+# Large raw data (replaced by compact parquet)
 # ==========================
 data/raw/candidates.jsonl
 data/processed/candidate_embeddings.npy
-
-# ==========================
-# Keep Required Artifacts!
-# ==========================
-# Do NOT ignore if your code depends on them:
-# data/embeddings/
-# models/
