@@ -1,0 +1,97 @@
+# ==========================
+# Python
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# ==========================
+# Jupyter
+# ==========================
+.ipynb_checkpoints/
+
+# ==========================
+# Build / Distribution
+# ==========================
+build/
+dist/
+*.egg-info/
+
+# ==========================
+# Pytest / Coverage
+# ==========================
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# ==========================
+# Mypy / Ruff
+# ==========================
+.mypy_cache/
+.ruff_cache/
+
+# ==========================
+# IDE
+# ==========================
+.vscode/
+.idea/
+
+# ==========================
+# Operating System
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# Logs
+# ==========================
+*.log
+
+# ==========================
+# Environment Variables
+# ==========================
+.env
+.env.*
+
+# ==========================
+# Model Cache
+# ==========================
+.cache/
+.huggingface/
+sentence_transformers/
+
+# ==========================
+# Temporary Files
+# ==========================
+*.tmp
+*.bak
+
+# ==========================
+# Generated Outputs
+# ==========================
+submission.csv
+predictions.csv
+results/
+outputs/
+
+# ==========================
+# Large Raw Data (Optional)
+# Remove these if the hackathon
+# requires uploading them.
+# ==========================
+data/raw/candidates.jsonl
+data/processed/candidate_embeddings.npy
+
+# ==========================
+# Keep Required Artifacts!
+# ==========================
+# Do NOT ignore if your code depends on them:
+# data/embeddings/
+# models/
