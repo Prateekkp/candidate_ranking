@@ -8,7 +8,7 @@ Candidate ranking system for the Redrob Hackathon v4.
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Run the ranking pipeline (<15 seconds on CPU)
+# 2. Run the ranking pipeline (<30 seconds on CPU)
 python rank.py --candidates ./data/processed/candidates.parquet --out ./submission.csv
 ```
 
@@ -20,18 +20,28 @@ The FAISS index and embeddings in this repo are pre-computed. If you need to
 regenerate them (e.g., after changing the embedding model):
 
 ```bash
-# Takes ~100-120 min on CPU for 100K candidates — only run once
+# Takes ~15 min on GPU for 100K candidates — only run once
 python precompute.py --candidates ./data/processed/candidates.parquet
 ```
 
+### Outputs
+
+| File | Description |
+|------|-------------|
+| `submission.csv` | Top 100 ranked candidates with reasoning |
+| `honeypots.csv` | Detected honeypot candidates from top 100 with reasoning |
+
 ## Architecture
+
+![Pipeline](data/img/rank_pipeline.png)
 
 ```
 rank.py                    # Unified entry point (THE command to reproduce)
 ├── Honeypot detection     # Filters impossible profiles (408 detected)
 ├── FAISS retrieval        # Inner-product search → top 2000 candidates
 ├── Multi-signal scoring   # 11 scoring signals combined
-└── Reasoning generation   # JD-aware candidate justification
+├── Reasoning generation   # JD-aware candidate justification
+└── Honeypot export        # Saves honeypots from top 100 to honeypots.csv
 ```
 
 ### Scoring Signals
@@ -52,7 +62,12 @@ rank.py                    # Unified entry point (THE command to reproduce)
 
 ## Compute Constraints
 
-- Runtime: **<15 seconds** wall-clock (ranking step)
+### Pre-computation (once)
+- Runtime: **~15 minutes** on GPU
+- Generates embeddings, FAISS index, JD embedding
+
+### Ranking step (per run)
+- Runtime: **<30 seconds** wall-clock
 - Memory: ≤ 16 GB RAM
 - CPU only — no GPU required
 - No network calls during ranking
@@ -67,7 +82,8 @@ rank.py                    # Unified entry point (THE command to reproduce)
 ├── requirements.txt                     # Python dependencies
 ├── README.md                            # This file
 ├── submission_metadata.yaml             # Portal metadata
-├── submission.csv                       # The submission file
+├── submission.csv                       # Top 100 ranked candidates
+├── honeypots.csv                        # Honeypots from top 100
 ├── .gitattributes                       # Git LFS config
 │
 ├── data/
@@ -84,6 +100,9 @@ rank.py                    # Unified entry point (THE command to reproduce)
 │       ├── candidates_with_profiles.parquet  # Preprocessed profiles (19 MB)
 │       ├── candidate_index.faiss        # FAISS index (147 MB, Git LFS)
 │       └── jd_embedding.npy             # Job description embedding (1.6 KB)
+│
+│   └── img/
+│       └── rank_pipeline.png            # Pipeline architecture diagram
 │
 └── docs/
     ├── job_description.docx             # Target job description

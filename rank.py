@@ -603,6 +603,22 @@ def run_pipeline(candidates_path: str, output_path: str) -> None:
     ranked["reasoning"] = ranked.apply(lambda r: generate_reasoning(r, r["rank"]), axis=1)
 
     # ------------------------------------------------------------------
+    # Step 6b: Export honeypot candidates from top 100
+    # ------------------------------------------------------------------
+    hp_in_top100 = ranked[ranked["is_honeypot"]].copy()
+    if len(hp_in_top100) > 0:
+        hp_output = hp_in_top100[["candidate_id", "rank", "final_score", "reasoning"]].copy()
+        hp_output = hp_output.rename(columns={"final_score": "score"})
+        hp_output = hp_output.sort_values(["score", "candidate_id"], ascending=[False, True])
+        hp_output["rank"] = range(1, len(hp_output) + 1)
+        hp_output = hp_output[["candidate_id", "rank", "score", "reasoning"]]
+
+        honeypot_path = Path(output_path).parent / "honeypots.csv"
+        honeypot_path.parent.mkdir(parents=True, exist_ok=True)
+        hp_output.to_csv(honeypot_path, index=False, quoting=csv.QUOTE_ALL, encoding="utf-8")
+        log.info(f"Saved {len(hp_output)} honeypot candidates from top 100 to {honeypot_path}")
+
+    # ------------------------------------------------------------------
     # Step 7: Write CSV
     # ------------------------------------------------------------------
     log.info("Step 7: Writing submission CSV...")
@@ -628,9 +644,12 @@ def run_pipeline(candidates_path: str, output_path: str) -> None:
     log.info("Ranking Complete")
     log.info("=" * 60)
     log.info(f"Output     : {output_path}")
+    hp_in_top100_count = int(ranked["is_honeypot"].sum())
+    log.info(f"Honeypots  : {hp_in_top100_count} in top 100 (out of {honeypot_count} total)")
+    if hp_in_top100_count > 0:
+        log.info(f"  Saved to : {honeypot_path}")
     log.info(f"Candidates : {len(output)}")
     log.info(f"Time       : {elapsed:.1f}s")
-    log.info(f"Honeypots  : {honeypot_count}")
     log.info("")
     log.info("Top 10:")
     for _, row in output.head(10).iterrows():

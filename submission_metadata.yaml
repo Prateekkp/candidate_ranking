@@ -24,11 +24,15 @@ team_members:
 # ============================================================================
 github_repo: "https://github.com/Prateekkp/candidate_ranking.git"
 
-sandbox_link: "https://colab.research.google.com/github/Prateekkp/candidate_ranking/blob/main/colab_sandbox.ipynb"
+sandbox_link: "https://colab.research.google.com/drive/1yhKP-8WHpi-t2XCl7veEutZU-LvgDe-O?usp=sharing"
 
 reproduce_command: "python rank.py --candidates ./data/processed/candidates.parquet --out ./submission.csv"
 
 precompute_command: "python precompute.py --candidates ./data/processed/candidates.parquet"
+
+outputs:
+  - "submission.csv (top 100 ranked candidates with reasoning)"
+  - "honeypots.csv (detected honeypot candidates from top 100 with reasoning)"
 
 # ============================================================================
 # Compute environment
@@ -39,10 +43,10 @@ compute:
   ram_gb: 16
   python_version: "3.11"
   os: "Windows 11"
-  uses_gpu_for_inference: false
+  uses_gpu_for_inference: true
   has_network_during_ranking: false
-  pre_computation_required: false
-  pre_computation_time_minutes: 0
+  pre_computation_required: true
+  pre_computation_time_minutes: 15
 
 # ============================================================================
 # AI tools declaration
@@ -71,9 +75,10 @@ methodology_summary: |
   embedding, (2) multi-signal re-ranking over 11 weighted components including
   semantic similarity, experience fit, retrieval/production keywords, company type,
   availability signals, skill match, platform assessments, title relevance, LLM
-  experience, and moderate research presence. Honeypot detection filters impossible
+  experience,   and moderate research presence. Honeypot detection filters impossible
   profiles. Reasoning is generated from JD-aware analysis of each candidate's
-  specific background, concerns, and fit. Runtime ~3min on CPU, 16GB RAM.
+  specific background, concerns, and fit. Precomputation ~15min on GPU (embeddings +
+  FAISS index), ranking step ~30s on CPU, 16GB RAM.
 
 # ============================================================================
 # Declarations
