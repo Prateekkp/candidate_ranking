@@ -1,0 +1,86 @@
+# Redrob Hackathon — Submission Metadata
+
+# ============================================================================
+# Team identity
+# ============================================================================
+team_name: "Safed Sagar"
+
+primary_contact:
+  name: "Prateek"
+  email: "prateekkumarprasad15@gmail.com"
+  phone: "+91-8384011833"
+
+team_members:
+  - name: "Akshat Shama"
+    email: "akshatshama@gmail.com"
+    role: "ML Engineer"
+
+  - name: "Yatharth Chopra"
+    email: "yatharthchopra@gmail.com"
+    role: "ML Engineer"
+
+# ============================================================================
+# Code and reproducibility
+# ============================================================================
+github_repo: "https://github.com/Prateekkp/candidate_ranking.git"
+
+sandbox_link: "https://huggingface.co/spaces/prateek/redrob-ranker"
+
+reproduce_command: "python rank.py --candidates ./data/processed/candidates.parquet --out ./submission.csv"
+
+precompute_command: "python precompute.py --candidates ./data/processed/candidates.parquet"
+
+# ============================================================================
+# Compute environment
+# ============================================================================
+compute:
+  platform: "Local development machine"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "3.11"
+  os: "Windows 11"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: false
+  pre_computation_time_minutes: 0
+
+# ============================================================================
+# AI tools declaration
+# ============================================================================
+ai_tools_used:
+  - "ChatGPT"
+  - "Gemini"
+  - "OpenCode"
+
+ai_usage_summary: |
+  - ChatGPT: Used for project planning, architecture design, and determining the
+    right steps and measures for the ranking pipeline. Helped decide scoring signals,
+    honeypot detection strategy, and evaluation approach.
+  - Google Gemini: Used in Google Colab to test code and produce output before
+    moving to VS Code. Validated embedding generation, FAISS indexing, and
+    scoring logic in an interactive notebook environment.
+  - OpenCode: Used for translating code from Jupyter notebooks into production
+    Python scripts (rank.py, precompute.py) in VS Code.
+
+# ============================================================================
+# Approach summary
+# ============================================================================
+methodology_summary: |
+  Two-stage pipeline: (1) FAISS inner-product retrieval of top-2000 candidates
+  using BAAI/bge-small-en-v1.5 embeddings of candidate profiles against the JD
+  embedding, (2) multi-signal re-ranking over 11 weighted components including
+  semantic similarity, experience fit, retrieval/production keywords, company type,
+  availability signals, skill match, platform assessments, title relevance, LLM
+  experience, and moderate research presence. Honeypot detection filters impossible
+  profiles. Reasoning is generated from JD-aware analysis of each candidate's
+  specific background, concerns, and fit. Runtime ~3min on CPU, 16GB RAM.
+
+# ============================================================================
+# Declarations
+# ============================================================================
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  honeypot_check_done: true
+  reproduction_tested: true

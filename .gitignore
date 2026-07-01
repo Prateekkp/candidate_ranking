@@ -85,3 +85,8 @@ data/processed/top2000_candidates.parquet
 # ==========================
 data/raw/candidates.jsonl
 data/processed/candidate_embeddings.npy
+
+# ==========================
+# Sandbox (HuggingFace Space files)
+# ==========================
+sandbox/

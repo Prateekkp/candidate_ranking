@@ -536,32 +536,48 @@ def run_pipeline(candidates_path: str, output_path: str) -> None:
     log.info("Redrob Candidate Ranking Pipeline (Fast Mode)")
     log.info("=" * 60)
 
-    # Check pre-computed artifacts exist
-    required = [
-        PROCESSED_DIR / "candidates_with_profiles.parquet",
-        PROCESSED_DIR / "candidate_index.faiss",
-        PROCESSED_DIR / "jd_embedding.npy",
-    ]
-    missing = [p for p in required if not p.exists()]
+    # Resolve artifact directories: check candidates dir first, then data/processed
+    candidates_path = Path(candidates_path)
+    candidates_dir = candidates_path.parent.resolve()
+    artifact_dirs = [candidates_dir, PROCESSED_DIR.resolve()]
+
+    def resolve_artifact(name):
+        for d in artifact_dirs:
+            p = d / name
+            if p.exists():
+                return p
+        return None
+
+    profiles_path = resolve_artifact("candidates_with_profiles.parquet")
+    index_path = resolve_artifact("candidate_index.faiss")
+    jd_emb_path = resolve_artifact("jd_embedding.npy")
+
+    missing = []
+    if profiles_path is None:
+        missing.append("candidates_with_profiles.parquet")
+    if index_path is None:
+        missing.append("candidate_index.faiss")
+    if jd_emb_path is None:
+        missing.append("jd_embedding.npy")
+
     if missing:
-        log.error("Pre-computed artifacts missing:")
-        for p in missing:
-            log.error(f"  - {p}")
+        log.error(f"Pre-computed artifacts missing: {missing}")
         log.error("Run: python precompute.py --candidates ./data/processed/candidates.parquet")
         sys.exit(1)
+
+    log.info(f"Using artifacts from: {profiles_path.parent}")
 
     # ------------------------------------------------------------------
     # Step 1: Load candidates and profiles
     # ------------------------------------------------------------------
     log.info("Step 1: Loading candidates...")
-    candidates_path = Path(candidates_path)
     if candidates_path.suffix == ".parquet":
         df = pd.read_parquet(candidates_path)
     else:
         df = pd.read_json(str(candidates_path), lines=True)
     log.info(f"Loaded {len(df):,} candidates")
 
-    profiles_df = pd.read_parquet(PROCESSED_DIR / "candidates_with_profiles.parquet")
+    profiles_df = pd.read_parquet(profiles_path)
     df = df.merge(profiles_df, on="candidate_id", how="left")
 
     # ------------------------------------------------------------------
@@ -590,11 +606,11 @@ def run_pipeline(candidates_path: str, output_path: str) -> None:
     # ------------------------------------------------------------------
     log.info("Step 4: FAISS retrieval...")
 
-    jd_embedding = np.load(PROCESSED_DIR / "jd_embedding.npy").astype(np.float32)
-    index = faiss.read_index(str(PROCESSED_DIR / "candidate_index.faiss"))
+    jd_embedding = np.load(jd_emb_path).astype(np.float32)
+    index = faiss.read_index(str(index_path))
     log.info(f"FAISS index: {index.ntotal:,} vectors")
 
-    TOP_K = 2000
+    TOP_K = min(2000, index.ntotal)
     scores, indices = index.search(jd_embedding.reshape(1, -1), TOP_K)
 
     top_df = df.iloc[indices[0]].copy()
