@@ -1,5 +1,4 @@
 setuptools>=68.0
-audioop-lts>=0.2.1
 pandas>=2.0,<3.0
 pyarrow>=14.0,<15.0
 numpy>=1.24,<2.0
