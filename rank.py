@@ -354,7 +354,7 @@ def score_title_relevance(profile: Any) -> float:
 
 
 def generate_reasoning(row: pd.Series, rank: int) -> str:
-    """Generate specific, JD-aware reasoning. Each row should be substantively different."""
+    """Generate concise, JD-aware reasoning (2-3 sentences)."""
     profile = row.get("profile", {})
     if not isinstance(profile, dict):
         return "Insufficient profile data."
@@ -362,8 +362,6 @@ def generate_reasoning(row: pd.Series, rank: int) -> str:
     years_exp = profile.get("years_of_experience", 0) or 0
     current_company = profile.get("current_company", "") or ""
     current_title = profile.get("current_title", "") or ""
-    location = profile.get("location", "") or ""
-    headline = profile.get("headline", "") or ""
 
     skills = row.get("skills", [])
     skill_list = [
@@ -377,151 +375,89 @@ def generate_reasoning(row: pd.Series, rank: int) -> str:
         if isinstance(job, dict):
             c = job.get("company", "")
             t = job.get("title", "")
-            d = job.get("description", "") or ""
             if c and t:
-                career_highlights.append((t, c, d[:150]))
+                career_highlights.append((t, c))
 
     matched_skills = set(s.lower() for s in skill_list) & JD_CORE_SKILLS
     career_text = _career_text(row.get("career_history", []))
     has_retrieval = any(kw in career_text for kw in ["retrieval", "search", "ranking", "vector", "embedding", "reranking"])
     has_production = any(kw in career_text for kw in ["production", "deployed", "shipped", "live system", "real users", "customer-facing"])
-    has_llm = any(kw in career_text for kw in ["llm", "language model", "fine-tun", "rag", "transformer", "bert", "gpt"])
-    has_eval = any(kw in career_text for kw in ["evaluation", "ndcg", "mrr", "a/b test", "benchmark", "offline evaluation"])
 
     signals = row.get("redrob_signals", {})
     open_to_work = signals.get("open_to_work_flag", False) if isinstance(signals, dict) else False
     notice_period = signals.get("notice_period_days") if isinstance(signals, dict) else None
-    response_rate = signals.get("recruiter_response_rate") if isinstance(signals, dict) else None
-    github = signals.get("github_activity_score", -1) if isinstance(signals, dict) else -1
-    profile_comp = signals.get("profile_completeness_score", 0) if isinstance(signals, dict) else 0
 
-    parts = []
+    # --- Sentence 1: Core fit assessment ---
+    # Build concise experience summary
+    companies = []
+    for t, c in career_highlights[:2]:
+        companies.append(f"{t} at {c}")
+    company_str = f", {companies[0]}" if companies else ""
 
-    # Opening: rank-appropriate fit assessment
+    skill_names = ", ".join(sorted(matched_skills)[:3])
+    skill_count = len(matched_skills)
+
     if rank <= 20:
         if matched_skills and has_retrieval:
-            skill_examples = ", ".join(sorted(matched_skills)[:3])
-            parts.append(
-                f"Strong JD fit: {years_exp}yr with retrieval/search systems, "
-                f"{skill_examples} ({len(matched_skills)} core matches)"
-            )
+            s1 = f"{years_exp}yr with retrieval/search systems{company_str}; {skill_count} JD skill matches ({skill_names})"
         elif matched_skills:
-            parts.append(
-                f"Good fit: {years_exp}yr, {len(matched_skills)} JD skill matches, "
-                f"but less explicit retrieval/ranking background"
-            )
+            s1 = f"{years_exp}yr, {skill_count} JD skill matches ({skill_names}), but limited retrieval background"
         else:
-            parts.append(
-                f"{years_exp}yr experience with retrieval work but "
-                f"limited formal skill alignment with JD core areas"
-            )
+            s1 = f"{years_exp}yr with retrieval work{company_str}, limited formal skill alignment"
     elif rank <= 50:
         if matched_skills and has_retrieval:
-            skill_examples = ", ".join(sorted(matched_skills)[:2])
-            parts.append(
-                f"Moderate fit: {years_exp}yr, {skill_examples} "
-                f"({len(matched_skills)} matches), retrieval background"
-            )
+            s1 = f"{years_exp}yr, {skill_count} skill matches ({skill_names}), retrieval background{company_str}"
         elif matched_skills:
-            parts.append(
-                f"{years_exp}yr, {len(matched_skills)} skill matches; "
-                f"retrieval experience is limited or indirect"
-            )
+            s1 = f"{years_exp}yr, {skill_count} skill matches; limited retrieval experience"
         elif has_retrieval:
-            parts.append(
-                f"{years_exp}yr with retrieval/search work; "
-                f"weak formal skill alignment"
-            )
+            s1 = f"{years_exp}yr with retrieval/search work; weak skill alignment"
         else:
-            parts.append(
-                f"{years_exp}yr experience; "
-                f"limited retrieval, ranking, or embeddings signal"
-            )
+            s1 = f"{years_exp}yr; limited retrieval, ranking, or embeddings signal"
     else:
         if matched_skills and has_retrieval:
-            parts.append(
-                f"{years_exp}yr, {len(matched_skills)} skill matches; "
-                f"some retrieval background but weaker overall fit"
-            )
+            s1 = f"{years_exp}yr, {skill_count} skill overlaps; some retrieval background"
         elif matched_skills:
-            parts.append(
-                f"{years_exp}yr with {len(matched_skills)} JD skill overlaps; "
-                f"limited production retrieval experience"
-            )
+            s1 = f"{years_exp}yr, {skill_count} JD skill overlaps; limited production retrieval"
         elif has_retrieval:
-            parts.append(
-                f"{years_exp}yr with some retrieval exposure; "
-                f"few core skill endorsements"
-            )
+            s1 = f"{years_exp}yr with some retrieval exposure; few skill endorsements"
         else:
-            parts.append(
-                f"{years_exp}yr; weak alignment with JD requirements"
-            )
+            s1 = f"{years_exp}yr; weak alignment with JD requirements"
 
-    # Career trajectory: mention specific companies and roles
-    if career_highlights:
-        t, c, _ = career_highlights[0]
-        parts.append(f"currently {t} at {c}")
-        if len(career_highlights) > 1:
-            t2, c2, _ = career_highlights[1]
-            parts.append(f"prior: {t2} at {c2}")
+    # --- Sentence 2: Strengths and concerns ---
+    concerns = []
+    strengths = []
 
-    # Production signal with detail
     if has_production:
-        # Try to extract a specific deployment detail
-        for _, _, desc in career_highlights:
-            if any(kw in desc.lower() for kw in ["production", "deployed", "shipped", "live", "scale"]):
-                snippet = desc[:80].strip()
-                if snippet:
-                    parts.append(f"production experience: '{snippet}...'")
-                    break
-        else:
-            parts.append("demonstrated production deployment experience")
+        strengths.append("shipped ML systems to production")
     else:
-        parts.append("no clear signal of shipping ML systems to production users")
+        concerns.append("no production deployment evidence")
 
-    # Company context
     if current_company in PRODUCT_COMPANIES:
-        parts.append(f"product company background ({current_company})")
+        strengths.append(f"product company ({current_company})")
     elif current_company in SERVICE_COMPANIES:
-        parts.append(f"service company background ({current_company}) — JD notes concern with consulting-only careers")
+        concerns.append(f"service company background ({current_company})")
 
-    # LLM experience if relevant
-    if has_llm:
-        parts.append("has LLM/fine-tuning experience (nice-to-have per JD)")
+    if notice_period and notice_period > 60:
+        concerns.append(f"notice period {notice_period}d")
+    if rank <= 20 and not open_to_work:
+        concerns.append("not open-to-work")
+    if rank <= 50 and years_exp < 4:
+        concerns.append(f"below preferred experience band ({years_exp}yr)")
+    if rank > 50 and years_exp and years_exp < 3:
+        concerns.append(f"significantly below threshold ({years_exp}yr)")
 
-    # Evaluation framework experience
-    if has_eval:
-        parts.append("experience with ranking evaluation frameworks (NDCG/MRR)")
+    s2_parts = []
+    if strengths:
+        s2_parts.append(strengths[0])
+    if concerns:
+        s2_parts.append(concerns[0])
 
-    # Rank-specific concerns
-    if rank <= 20:
-        if notice_period and notice_period > 60:
-            parts.append(f"notice period {notice_period}d exceeds preferred 30-day window")
-        if not open_to_work:
-            parts.append("not flagged open-to-work — may not be actively seeking")
-        if years_exp < 5:
-            parts.append(f"below JD sweet spot of 5-9yr ({years_exp}yr)")
-    elif rank <= 50:
-        if not has_retrieval:
-            parts.append("gap: no explicit retrieval or ranking system experience in career")
-        if not has_production:
-            parts.append("no production deployment evidence — JD emphasizes shipping")
-        if years_exp < 4:
-            parts.append(f"experience below preferred band ({years_exp}yr vs 5-9yr)")
-        if years_exp > 11:
-            parts.append(f"experience above sweet spot ({years_exp}yr) — JD notes senior archetypes less preferred")
-    else:
-        if len(matched_skills) < 2:
-            parts.append("weak alignment with JD required skills")
-        if not has_retrieval and not has_production:
-            parts.append("neither retrieval experience nor production ML — both are JD requirements")
-        if current_company in SERVICE_COMPANIES:
-            parts.append("solely consulting/services background — JD explicitly flags this concern")
-        if years_exp and years_exp < 3:
-            parts.append(f"significantly below experience threshold ({years_exp}yr)")
+    s2 = ". ".join(s2_parts) if s2_parts else ""
 
-    return "; ".join(parts)
+    # Combine
+    if s2:
+        return f"{s1}; {s2}."
+    return f"{s1}."
 
 
 # ---------------------------------------------------------------------------
